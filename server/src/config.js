@@ -11,4 +11,5 @@ function getEnv(name, fallback) {
 export const config = {
   port: Number(getEnv("PORT", "4000")),
   corsOrigin: getEnv("CORS_ORIGIN", "http://localhost:5173"),
+  JWT_SECRET: getEnv("JWT_SECRET", "nuraJWT"),
 };
