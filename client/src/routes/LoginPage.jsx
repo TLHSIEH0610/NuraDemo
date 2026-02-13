@@ -29,6 +29,7 @@ export default function () {
     } catch (e) {
       console.error(e);
     }
+    console.log("succe");
     navigate("/", { replace: true });
   }
   return (

@@ -1,6 +1,6 @@
 import { Navigate, Routes, Route } from "react-router";
-import LoginPage from "./routes/HomePage";
-import HomePage from "./routes/LoginPage";
+import LoginPage from "./routes/LoginPage";
+import HomePage from "./routes/HomePage.jsx";
 import AuthProtector from "./auth/AuthProtector.jsx";
 
 export default function App() {
