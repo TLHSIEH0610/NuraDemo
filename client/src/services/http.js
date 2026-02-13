@@ -1,15 +1,24 @@
-export async function http(endpoint, { method, body, token } = {}) {
-  const res = await fetch(endpoint, {
+export async function http(
+  endpoint,
+  { method = "GET", data, token, ...arg } = {},
+) {
+  const config = {
     method,
-    header: {
+    headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-  });
-  const data = await res.json();
+    ...arg,
+  };
+
+  if (config.method.toUpperCase() !== "GET") {
+    config.body = JSON.stringify(data || {});
+  }
+  const res = await fetch(endpoint, config);
+  const result = await res.json();
   if (!res.ok) {
     console.error(`Request failed (${res.status})`);
   }
 
-  return data;
+  return result;
 }

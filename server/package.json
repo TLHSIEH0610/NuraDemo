@@ -4,7 +4,8 @@
   "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "dev": "node --watch src/index.js"
+    "dev": "NODE_OPTIONS=\"--network-family-autoselection-attempt-timeout=500\" node --watch src/index.js",
+    "start": "NODE_OPTIONS=\"--network-family-autoselection-attempt-timeout=500\" node src/index.js"
   },
   "keywords": [],
   "author": "",

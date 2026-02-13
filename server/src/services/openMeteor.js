@@ -1,4 +1,4 @@
-import { http } from "./utils.js";
+import { httpJson } from "./utils.js";
 
 export async function searchCity(name) {
   const url = new URL("https://geocoding-api.open-meteo.com/v1/search");
@@ -7,16 +7,27 @@ export async function searchCity(name) {
   url.searchParams.set("language", "en");
   url.searchParams.set("format", "json");
 
-  const { res, data } = http(url.toString());
-  if (!res.ok) {
-    throw new Error("pen-Meteo geocoding failed");
+  const { res, data } = await httpJson(url.toString());
+  if (!res.ok || data?.error) {
+    const reason = data?.reason ? `: ${data.reason}` : "";
+    throw new Error(`Open-Meteo geocoding failed${reason}`);
   }
 
-  return data.map((r) => ({
+  const results = data?.results ?? [];
+  return results.map((r) => ({
+    id: r.id,
     name: r.name,
-    country: r.country_code,
     latitude: r.latitude,
     longitude: r.longitude,
+    elevation: r.elevation ?? null,
+    featureCode: r.feature_code ?? null,
+    countryCode: r.country_code ?? null,
+    country: r.country ?? null,
+    admin1: r.admin1 ?? null,
+    admin2: r.admin2 ?? null,
+    admin3: r.admin3 ?? null,
+    admin4: r.admin4 ?? null,
+    timezone: r.timezone ?? null,
   }));
 }
 
@@ -27,9 +38,9 @@ export async function getCurrentForecast(latitude, longitude) {
   url.searchParams.set("current", "temperature_2m,wind_speed_10m,weather_code");
   url.searchParams.set("timezone", "auto");
 
-  const { res, data } = http(url.toString());
+  const { res, data } = await httpJson(url.toString());
   if (!res.ok) {
-    throw new Error("pen-Meteo frecast failed");
+    throw new Error("Open-Meteo forecast failed");
   }
 
   return {

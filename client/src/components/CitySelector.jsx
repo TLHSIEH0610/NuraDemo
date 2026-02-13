@@ -1,46 +1,41 @@
 import { Autocomplete, TextField } from "@mui/material";
-import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 
 import { useCitiesQuery } from "../quires/useCitiesQuery";
 import { useDebounce } from "../hooks/useDebounce";
 
-export default function ({
-  cities,
-  selectedCityId,
-  onSelectedCityIdChange,
-  loading,
-  error,
-}) {
-  const queryClient = useQueryClient();
+export default function CitySelector({ selectedCity, setSelectedCity }) {
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebounce(query, 250);
-  const enableRemote = debouncedQuery.trim().length >= 2;
-  const citiesQuery = useCitiesQuery(debouncedQuery, {
-    enabled: enableRemote,
-  });
+  const { isError, error, isFetching, data } = useCitiesQuery(debouncedQuery);
 
-  async function onChange(_, next) {
-    if (!next) return;
+  function onChange(_, v) {
+    setSelectedCity(v);
+    setQuery("");
   }
-
+  console.log(query);
   return (
     <Autocomplete
-      value={value}
+      value={selectedCity}
       onChange={onChange}
-      options={options}
-      getOptionLabel={(o) => o.label}
-      isOptionEqualToValue={(a, b) => a.id === b.id}
-      inputValue={query}
-      onInputChange={(_, next) => setQuery(next)}
+      options={data?.cities || []}
+      getOptionLabel={(c) => `${c.name}-${c.country} ${c.admin1 ?? ""}`}
+      onInputChange={(_, v, reason) => {
+        console.log({ reason });
+        if (reason === "input" || reason === "clear") setQuery(v);
+        if (reason === "blur") setQuery("");
+      }}
       filterOptions={(x) => x}
-      disabled={loading}
+      loading={isFetching}
+      noOptionsText={query ? "No results" : "Type to search"}
+      clearOnBlur={true}
       renderInput={(params) => (
         <TextField
           {...params}
           label="City"
-          placeholder={loading ? "Loading" : "Search or select a city…"}
+          placeholder={isFetching ? "Loading" : "Search a city…"}
           error={isError}
-          helperText={helperText}
+          helperText={isError && error.message}
         />
       )}
     />
