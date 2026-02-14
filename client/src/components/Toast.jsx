@@ -1,4 +1,4 @@
-import { Alert, Snackbar } from "@mui/material";
+import { Alert, AlertTitle, Snackbar } from "@mui/material";
 
 export default function ({ toasts, onDismiss }) {
   return (
@@ -13,16 +13,11 @@ export default function ({ toasts, onDismiss }) {
           sx={{ mt: idx * 7 }}
         >
           <Alert
-            severity={t.severity || "info"}
+            severity="info"
             variant="filled"
             onClose={() => onDismiss(t.id)}
           >
-            {t.title ? (
-              <>
-                <strong>{t.title}</strong>
-                {"\n"}
-              </>
-            ) : null}
+            {t.title ? <AlertTitle sx={{ mb: 0 }}>{t.title}</AlertTitle> : null}
             {t.message}
           </Alert>
         </Snackbar>

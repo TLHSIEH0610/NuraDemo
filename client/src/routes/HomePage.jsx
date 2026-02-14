@@ -1,12 +1,16 @@
 import { useState, useRef, useEffect } from "react";
 import {
+  AppBar,
+  Chip,
   Box,
   Button,
   Card,
   CardContent,
   Container,
+  Divider,
   Stack,
   TextField,
+  Toolbar,
   Typography,
 } from "@mui/material";
 import { useQueryClient } from "@tanstack/react-query";
@@ -43,7 +47,7 @@ function WeatherDisplay({ selectedCity }) {
     );
   }
 
-  if (weatherQuery.isFetching) {
+  if (weatherQuery.isLoading) {
     return (
       <Typography variant="body2" color="text.secondary">
         Loading weather…
@@ -64,21 +68,42 @@ function WeatherDisplay({ selectedCity }) {
   const temperature = current?.temperature_2m ?? null;
   const wind = current?.wind_speed_10m ?? null;
   const code = current?.weather_code ?? null;
+  const time = current?.time ?? null;
 
   return (
-    <Stack spacing={0.5}>
-      <Typography variant="h6">
-        {selectedCity.name}
-        {selectedCity.country}
-      </Typography>
-      <Typography variant="body2" color="text.secondary">
-        {`Timezone: ${timezone}`}
-      </Typography>
-      <Typography variant="body1">
-        {temperature !== null ? `${temperature}°` : "—"}
-        {wind !== null ? ` · Wind ${wind}` : ""}
-        {code !== null ? ` · Code ${code}` : ""}
-      </Typography>
+    <Stack spacing={1.25}>
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        alignItems={{ xs: "flex-start", sm: "center" }}
+        justifyContent="space-between"
+        spacing={1}
+      >
+        <Box>
+          <Typography variant="h6" fontWeight={800}>
+            {selectedCity.name}
+            {selectedCity.admin1 ? `, ${selectedCity.admin1}` : ""}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {selectedCity.country ? `${selectedCity.country}` : "—"}
+            {timezone ? ` · ${timezone}` : ""}
+            {time ? ` · ${time}` : ""}
+          </Typography>
+        </Box>
+      </Stack>
+
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        spacing={2}
+        alignItems={{ xs: "flex-start", sm: "center" }}
+      >
+        <Typography variant="h3" fontWeight={900} lineHeight={1}>
+          {temperature !== null ? `${Math.round(temperature)}°` : "—"}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          {wind !== null ? `Wind: ${wind}` : "Wind: —"}
+          {code !== null ? ` · Code: ${code}` : ""}
+        </Typography>
+      </Stack>
     </Stack>
   );
 }
@@ -91,17 +116,40 @@ function AdminMessage({ cityId }) {
     setMessage("");
   }
 
+  const disabled = !message.trim() || pushMessageMutation.isPending;
+
   return (
-    <Card>
-      <Typography>Push Message</Typography>
+    <Stack spacing={1.5}>
+      <Typography variant="subtitle1" fontWeight={800}>
+        Push message
+      </Typography>
+      <Typography variant="body2" color="text.secondary">
+        Broadcast a message to everyone viewing this city.
+      </Typography>
       <TextField
         value={message}
         onChange={({ target: { value } }) => setMessage(value)}
+        placeholder="Type a message…"
+        multiline
+        minRows={3}
+        fullWidth
       />
-      <Button variant="contained" color="success" onClick={pushAdminMessage}>
-        Push
-      </Button>
-    </Card>
+      <Stack direction="row" spacing={1} alignItems="center">
+        <Button
+          variant="contained"
+          color="success"
+          onClick={pushAdminMessage}
+          disabled={disabled}
+        >
+          {pushMessageMutation.isPending ? "Sending…" : "Sent"}
+        </Button>
+        {pushMessageMutation.isError ? (
+          <Typography variant="body2" color="error">
+            {pushMessageMutation.error?.message || "Failed to send."}
+          </Typography>
+        ) : null}
+      </Stack>
+    </Stack>
   );
 }
 
@@ -193,57 +241,95 @@ export default function HomePage() {
 
     if (!socket.connected) return;
     socket.emit("join_city", { cityId: id, latitude, longitude });
-  }, [
-    selectedCity?.id,
-    selectedCity?.latitude,
-    selectedCity?.longitude,
-  ]);
+  }, [selectedCity?.id, selectedCity?.latitude, selectedCity?.longitude]);
 
   function onDismiss(id) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }
 
   return (
-    <Box sx={{ minHeight: "100dvh" }}>
-      <Container maxWidth="md">
-        <Stack spacing={2} sx={{ py: 2 }}>
-          <Stack
-            direction="row"
-            justifyContent="space-between"
-            alignItems="center"
-          >
-            <Typography variant="h5">Weather</Typography>
-            <Button color="inherit" onClick={() => auth.logout()}>
-              Logout
-            </Button>
-          </Stack>
+    <Box
+      sx={{
+        minHeight: "100dvh",
+        background:
+          "radial-gradient(1200px 700px at 10% -10%, rgba(25, 118, 210, 0.12), transparent 60%), radial-gradient(900px 600px at 100% 10%, rgba(46, 125, 50, 0.10), transparent 55%)",
+      }}
+    >
+      <AppBar
+        position="sticky"
+        elevation={0}
+        color="transparent"
+        sx={{ backdropFilter: "blur(10px)" }}
+      >
+        <Toolbar>
+          <Container maxWidth="md" disableGutters sx={{ px: { xs: 2, sm: 0 } }}>
+            <Stack
+              direction="row"
+              alignItems="center"
+              justifyContent="space-between"
+            >
+              <Box>
+                <Typography variant="h6" fontWeight={900}>
+                  Weather
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Signed in as <code>{auth.user.username}</code> (
+                  {auth.user.role})
+                </Typography>
+              </Box>
+              <Button color="inherit" onClick={() => auth.logout()}>
+                Logout
+              </Button>
+            </Stack>
+          </Container>
+        </Toolbar>
+      </AppBar>
 
-          <Card>
-            <CardContent>
-              <CitySelector
-                selectedCity={selectedCity}
-                setSelectedCity={setSelectedCity}
-              />
+      <Container maxWidth="md" sx={{ py: 3 }}>
+        <Stack spacing={2}>
+          <Card sx={{ borderRadius: 3 }}>
+            <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
+              <Stack spacing={1.5}>
+                <Box>
+                  <Typography variant="subtitle1" fontWeight={800}>
+                    City
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Select or search a city to see weather.
+                  </Typography>
+                </Box>
+                <CitySelector
+                  selectedCity={selectedCity}
+                  setSelectedCity={setSelectedCity}
+                />
+              </Stack>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent>
-              <WeatherDisplay
-                selectedCity={selectedCity}
-                // weatherQuery={weatherQuery}
-              />
+          <Card sx={{ borderRadius: 3 }}>
+            <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
+              <Stack spacing={1.5}>
+                <Box>
+                  <Typography variant="subtitle1" fontWeight={800}>
+                    Current weather
+                  </Typography>
+                </Box>
+                <Divider />
+                <WeatherDisplay selectedCity={selectedCity} />
+              </Stack>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent>
-              {auth.user.role === "admin" && (
+
+          {auth.user.role === "admin" ? (
+            <Card sx={{ borderRadius: 3 }}>
+              <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
                 <AdminMessage cityId={selectedCity.id} />
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          ) : null}
         </Stack>
       </Container>
+
       <Toast toasts={toasts} onDismiss={onDismiss} />
     </Box>
   );
