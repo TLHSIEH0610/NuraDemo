@@ -13,7 +13,6 @@ export default function CitySelector({ selectedCity, setSelectedCity }) {
     setSelectedCity(v);
     setQuery("");
   }
-  console.log(query);
   return (
     <Autocomplete
       value={selectedCity}
@@ -21,7 +20,6 @@ export default function CitySelector({ selectedCity, setSelectedCity }) {
       options={data?.cities || []}
       getOptionLabel={(c) => `${c.name}-${c.country} ${c.admin1 ?? ""}`}
       onInputChange={(_, v, reason) => {
-        console.log({ reason });
         if (reason === "input" || reason === "clear") setQuery(v);
         if (reason === "blur") setQuery("");
       }}

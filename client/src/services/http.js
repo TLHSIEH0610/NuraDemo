@@ -1,7 +1,4 @@
-export async function http(
-  endpoint,
-  { method = "GET", data, token, ...arg } = {},
-) {
+export async function http(endpoint, { method = "GET", body, token, ...arg }) {
   const config = {
     method,
     headers: {
@@ -12,7 +9,7 @@ export async function http(
   };
 
   if (config.method.toUpperCase() !== "GET") {
-    config.body = JSON.stringify(data || {});
+    config.body = JSON.stringify(body || {});
   }
   const res = await fetch(endpoint, config);
   const result = await res.json();

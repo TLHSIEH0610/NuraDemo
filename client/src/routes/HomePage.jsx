@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Box,
   Button,
@@ -6,15 +6,19 @@ import {
   CardContent,
   Container,
   Stack,
+  TextField,
   Typography,
 } from "@mui/material";
 
 import { useAuth } from "../auth/AuthContext.jsx";
 import CitySelector from "../components/CitySelector.jsx";
 import { useWeatherQuery } from "../quires/useWeatherQuery";
+import { io } from "socket.io-client";
+import { usePushMessageMutation } from "../quires/usePushMessages.js";
+import Toast from "../components/Toast.jsx";
 
 const DEFAULT_CITY = {
-  id: "default:melbourne",
+  id: 2158177,
   name: "Melbourne",
   latitude: -37.8136,
   longitude: 144.9631,
@@ -78,9 +82,84 @@ function WeatherDisplay({ selectedCity }) {
   );
 }
 
+function AdminMessage({ cityId }) {
+  const [message, setMessage] = useState("");
+  const pushMessageMutation = usePushMessageMutation();
+  async function pushAdminMessage() {
+    await pushMessageMutation.mutateAsync({ cityId, message });
+    setMessage("");
+  }
+
+  return (
+    <Card>
+      <Typography>Push Message</Typography>
+      <TextField
+        value={message}
+        onChange={({ target: { value } }) => setMessage(value)}
+      />
+      <Button variant="contained" color="success" onClick={pushAdminMessage}>
+        Push
+      </Button>
+    </Card>
+  );
+}
+
 export default function HomePage() {
   const auth = useAuth();
   const [selectedCity, setSelectedCity] = useState(DEFAULT_CITY);
+  const socketRef = useRef(null);
+  const [toasts, setToasts] = useState([]);
+
+  useEffect(() => {
+    if (!auth.isAuthed) return;
+
+    const socket = io("/", {
+      path: "/socket.io",
+      auth: { token: auth.token },
+    });
+
+    socketRef.current = socket;
+
+    socket.on("city_message", (payload) => {
+      const toastContent = {
+        id: `${Date.now() - Math.random()}`,
+        cityId: payload.cityId,
+        message: payload.message,
+        sentAt: payload.sentAt,
+        title: "Message from your city",
+      };
+      setToasts((prev) => [toastContent, ...prev]);
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((x) => x.id !== toastContent.id));
+      }, 6000);
+    });
+
+    return () => {
+      socketRef.current = null;
+      socket.disconnect();
+    };
+  }, [auth.isAuthed, auth.token]);
+
+  useEffect(() => {
+    const socket = socketRef.current;
+    const id = selectedCity?.id;
+    if (!socket || !id) return;
+
+    if (socket.connected) {
+      socket.emit("join_city", { cityId: id });
+      return;
+    }
+
+    const onConnect = () => socket.emit("join_city", { cityId: id });
+    socket.once("connect", onConnect);
+    return () => {
+      socket.off("connect", onConnect);
+    };
+  }, [selectedCity?.id]);
+
+  function onDismiss(id) {
+    setToasts((prev) => prev.filter((pid) => pid !== id));
+  }
 
   return (
     <Box sx={{ minHeight: "100dvh" }}>
@@ -114,8 +193,16 @@ export default function HomePage() {
               />
             </CardContent>
           </Card>
+          <Card>
+            <CardContent>
+              {auth.user.role === "admin" && (
+                <AdminMessage cityId={selectedCity.id} />
+              )}
+            </CardContent>
+          </Card>
         </Stack>
       </Container>
+      <Toast toasts={toasts} onDismiss={onDismiss} />
     </Box>
   );
 }
