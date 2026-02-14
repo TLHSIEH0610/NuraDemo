@@ -9,6 +9,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "../auth/AuthContext.jsx";
 import CitySelector from "../components/CitySelector.jsx";
@@ -106,9 +107,15 @@ function AdminMessage({ cityId }) {
 
 export default function HomePage() {
   const auth = useAuth();
+  const queryClient = useQueryClient();
   const [selectedCity, setSelectedCity] = useState(DEFAULT_CITY);
+  const selectedCityRef = useRef(selectedCity);
   const socketRef = useRef(null);
   const [toasts, setToasts] = useState([]);
+
+  useEffect(() => {
+    selectedCityRef.current = selectedCity;
+  }, [selectedCity]);
 
   useEffect(() => {
     if (!auth.isAuthed) return;
@@ -119,6 +126,18 @@ export default function HomePage() {
     });
 
     socketRef.current = socket;
+
+    socket.on("connect", () => {
+      const city = selectedCityRef.current;
+      const id = city?.id;
+      if (!id) return;
+
+      const latitude = city?.latitude;
+      const longitude = city?.longitude;
+      if (typeof latitude !== "number" || typeof longitude !== "number") return;
+
+      socket.emit("join_city", { cityId: id, latitude, longitude });
+    });
 
     socket.on("city_message", (payload) => {
       const toastContent = {
@@ -134,31 +153,54 @@ export default function HomePage() {
       }, 6000);
     });
 
+    socket.on("weather_update", (payload) => {
+      const latitude = payload?.latitude;
+      const longitude = payload?.longitude;
+      const weather = payload?.weather;
+
+      if (typeof latitude !== "number" || typeof longitude !== "number") return;
+      if (!weather) return;
+
+      queryClient.setQueryData(["weather", latitude, longitude], weather);
+
+      const toastContent = {
+        id: `${Date.now()}-${Math.random()}`,
+        cityId: payload.cityId,
+        message: "Weather refreshed",
+        sentAt: payload.fetchedAt || new Date().toISOString(),
+        title: "Weather update",
+      };
+      setToasts((prev) => [toastContent, ...prev].slice(0, 5));
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((x) => x.id !== toastContent.id));
+      }, 6000);
+    });
+
     return () => {
       socketRef.current = null;
       socket.disconnect();
     };
-  }, [auth.isAuthed, auth.token]);
+  }, [auth.isAuthed, auth.token, queryClient]);
 
   useEffect(() => {
     const socket = socketRef.current;
     const id = selectedCity?.id;
     if (!socket || !id) return;
 
-    if (socket.connected) {
-      socket.emit("join_city", { cityId: id });
-      return;
-    }
+    const latitude = selectedCity?.latitude;
+    const longitude = selectedCity?.longitude;
+    if (typeof latitude !== "number" || typeof longitude !== "number") return;
 
-    const onConnect = () => socket.emit("join_city", { cityId: id });
-    socket.once("connect", onConnect);
-    return () => {
-      socket.off("connect", onConnect);
-    };
-  }, [selectedCity?.id]);
+    if (!socket.connected) return;
+    socket.emit("join_city", { cityId: id, latitude, longitude });
+  }, [
+    selectedCity?.id,
+    selectedCity?.latitude,
+    selectedCity?.longitude,
+  ]);
 
   function onDismiss(id) {
-    setToasts((prev) => prev.filter((pid) => pid !== id));
+    setToasts((prev) => prev.filter((t) => t.id !== id));
   }
 
   return (
