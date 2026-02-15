@@ -5,6 +5,8 @@ services:
       dockerfile: server/Dockerfile
     env_file:
       - ./server/.env
+    environment:
+      NODE_OPTIONS: "--network-family-autoselection-attempt-timeout=500"
     expose:
       - "4000"
     restart: unless-stopped
