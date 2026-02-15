@@ -42,7 +42,6 @@ export function AuthProvider({ children }) {
         body: JSON.stringify({ username, password }),
       });
       const data = await res.json();
-      console.log({ data });
       if (!res.ok) {
         throw new Error(data?.error || "Login failed");
       }
@@ -55,18 +54,18 @@ export function AuthProvider({ children }) {
     },
   });
 
-  const login = useCallback(
-    async ({ username, password }) => {
-      return await loginMutation.mutateAsync({ username, password });
-    },
-    [loginMutation.mutateAsync],
-  );
-
   const logout = useCallback(() => {
     setLocalAuth(unAuthState);
     setAuthState(unAuthState);
     queryClient.clear();
-  }, []);
+  }, [queryClient]);
+
+  const login = useCallback(
+    async ({ username, password }) => {
+      return await loginMutation.mutateAsync({ username, password });
+    },
+    [loginMutation],
+  );
 
   const value = useMemo(
     () => ({

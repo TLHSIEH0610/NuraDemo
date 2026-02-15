@@ -2,6 +2,7 @@ import express from "express";
 import { z } from "zod";
 
 import { broadcastMessage } from "../websocket/broadcast.js";
+import { requireAuth, requireRole } from "../middleware/auth.js";
 
 export const messagesRouter = express.Router();
 
@@ -10,7 +11,7 @@ const schema = z.object({
   message: z.string().trim(),
 });
 
-messagesRouter.post("/", (req, res) => {
+messagesRouter.post("/", requireAuth, requireRole("admin"), (req, res) => {
   const valid = schema.safeParse(req.body);
   if (!valid.success) {
     return res

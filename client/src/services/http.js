@@ -12,9 +12,22 @@ export async function http(endpoint, { method = "GET", body, token, ...arg }) {
     config.body = JSON.stringify(body || {});
   }
   const res = await fetch(endpoint, config);
-  const result = await res.json();
+
+  let result = null;
+  try {
+    result = await res.json();
+  } catch {
+    result = null;
+  }
+
   if (!res.ok) {
-    console.error(`Request failed (${res.status})`);
+    const message =
+      (result && typeof result === "object" && result.error) ||
+      `Request failed (${res.status})`;
+    const err = new Error(message);
+    err.status = res.status;
+    err.details = result;
+    throw err;
   }
 
   return result;

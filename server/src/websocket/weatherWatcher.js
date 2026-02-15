@@ -13,6 +13,7 @@ function getCoordsFromRoom(io, cityId, socketIds) {
     const latitude = activeCity.latitude;
     const longitude = activeCity.longitude;
 
+    if (typeof latitude !== "number" || typeof longitude !== "number") continue;
     return { latitude, longitude };
   }
 
@@ -21,7 +22,6 @@ function getCoordsFromRoom(io, cityId, socketIds) {
 
 export function startWeatherWatcher(io) {
   if (!config.wsWeatherEnabled) return () => {};
-  console.log("start refetch");
   let isTicking = false;
 
   async function tick() {
@@ -34,6 +34,7 @@ export function startWeatherWatcher(io) {
         if (!socketIds || socketIds.size === 0) continue;
 
         const cityId = Number(roomName.slice("city:".length));
+        if (!Number.isFinite(cityId)) continue;
 
         const coords = getCoordsFromRoom(io, cityId, socketIds);
         if (!coords) continue;
@@ -51,7 +52,7 @@ export function startWeatherWatcher(io) {
             fetchedAt: new Date().toISOString(),
           });
         } catch (err) {
-          console.error("ws-weather fetch failed", {
+          console.error("[ws-weather] fetch failed", {
             cityId,
             error: String(err?.message || err),
           });

@@ -3,11 +3,15 @@ import { verifyToken } from "../auth/jwt.js";
 import { config } from "../config.js";
 import { z } from "zod";
 
-const schema = z.object({
-  cityId: z.number(),
-  latitude: z.number().optional(),
-  longitude: z.number().optional(),
-});
+const schema = z
+  .object({
+    cityId: z.number(),
+    latitude: z.number().optional(),
+    longitude: z.number().optional(),
+  })
+  .refine((d) => (d.latitude == null) === (d.longitude == null), {
+    message: "latitude and longitude must both be provided",
+  });
 
 export function connectSocket(httpServer) {
   const io = new Server(httpServer, {
@@ -49,7 +53,7 @@ export function connectSocket(httpServer) {
         latitude: latitude ?? null,
         longitude: longitude ?? null,
       };
-      socket.join(`city:${cityId}`);
+      socket.join(`city:${String(cityId)}`);
     });
   });
 
